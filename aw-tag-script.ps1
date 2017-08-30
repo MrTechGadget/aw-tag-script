@@ -1,9 +1,8 @@
 
-<# Execute-AWRestAPI Powershell Script Help
+<# Add-TagToDevices Powershell Script Help
 
   .SYNOPSIS
-    This Poweshell script make a REST API call to an AirWatch server.  This particular script is used to build an Assignment
-    Group for all supervised devices.  There is currently no filter in the console
+    This Poweshell script make a REST API call to an AirWatch server.  This particular script is used to add a tag to a list of devices.
     
   .DESCRIPTION
     To understand the underlying call check:
@@ -13,7 +12,7 @@
     https://chrome.google.com/webstore/detail/postman/fhbjgbiflinjbdggehcddcbncdddomop?hl=en
 
   .EXAMPLE
-    Execute-AWRestAPI.ps1 -userName Administrator -password password -tenantAPIKey 4+apikeyw/krandomSstuffIleq4MY6A7WPmo9K9AbM6A= -outputFile c:\Users\Administrator\Desktop\output.txt -endpointURL https://demo.awmdm.com/API/v1/mdm/devices/serialnumber  -inputFile C:\Users\Administrator\Desktop\SerialNumbers1.txt -Verbose
+    Add-TagToDevices.ps1 -userName Administrator -password password -tenantAPIKey 4+apikeyw/krandomSstuffIleq4MY6A7WPmo9K9AbM6A= -outputFile c:\Users\Administrator\Desktop\output.txt -endpointURL https://demo.awmdm.com/API/v1/mdm/devices/serialnumber  -inputFile C:\Users\Administrator\Desktop\SerialNumbers1.txt -Verbose
   
   .PARAMETER userName
     An AirWatch account in the tenant is being queried.  This user must have the API role at a minimum.
