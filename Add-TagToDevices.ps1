@@ -33,6 +33,7 @@
     
 #>
 
+<#
 [CmdletBinding()]
     Param(
         [Parameter(Mandatory=$True)]
@@ -59,18 +60,29 @@ Write-Verbose ("AirWatchServer URL: " + $airwatchServer)
 Write-Verbose ("Organization Group Name: " + $organizationGroupName)
 Write-Verbose "-----------------------------"
 Write-Verbose ""
+#>
+
+Function Load-Config {
+    #from http://tlingenf.spaces.live.com/blog/cns!B1B09F516B5BAEBF!213.entry
+    #
+    Get-Content "AirWatchConfig.Config" | foreach-object -begin {$h=@{}} -process { $k = [regex]::split($_,'='); if(($k[0].CompareTo("") -ne 0) -and ($k[0].StartsWith("[") -ne $True)) { $h.Add($k[0], $k[1]) } }
+    $tenantAPIKey = $h.awtenantcode
+    $organizationGroupName = $h.groupid
+    $airwatchServer = $h.host
+}
 
 <#
   This implementation uses Baisc authentication.  See "Client side" at https://en.wikipedia.org/wiki/Basic_access_authentication for a description
   of this implementation.
 #>
-Function Get-UserForAuth {
+Function Get-BasicUserForAuth {
     $Credential = Get-Credential
     $EncodedUsernamePassword = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($('{0}:{1}' -f $Credential.UserName,$Credential.GetNetworkCredential().Password)))
+    
     Return "Basic " + $EncodedUsernamePassword
 }
 
-Function Get-BasicUserForAuth {
+Function Get-BasicUserForAuthOld {
 
 	Param([string]$func_username)
 
@@ -214,9 +226,11 @@ Function Build-AddSupervisedTagJSON {
 }
 
 <# This is the actual start of the script.  All above functions are called from this point forward. #>
-$concateUserInfo = $userName + ":" + $password
+#$concateUserInfo = $userName + ":" + $password
 $deviceListURI = $baseURL + $bulkDeviceEndpoint
-$restUserName = Get-BasicUserForAuth ($concateUserInfo)
+$restUserName = Get-BasicUserForAuth
+Load-Config
+
 
 <#
   Build the headers and send the request to the server.  The response is returned as a PSObject $webReturn, which is a collection
