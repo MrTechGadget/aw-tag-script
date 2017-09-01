@@ -52,7 +52,7 @@
         [string]$organizationGroupName
 )
 
-Write-Verbose "-- Command Line Parameters --"
+Write-Verbose "-- Command Line Parameters --"soutehrnco\
 Write-Verbose ("UserName: " + $userName)
 Write-Verbose ("Password: " + $password)
 Write-Verbose ("Tenant API Key: " + $tenantAPIKey)
@@ -62,13 +62,13 @@ Write-Verbose "-----------------------------"
 Write-Verbose ""
 #>
 
-Function Load-Config {
+Function Read-Config {
     #from http://tlingenf.spaces.live.com/blog/cns!B1B09F516B5BAEBF!213.entry
     #
     Get-Content "AirWatchConfig.Config" | foreach-object -begin {$h=@{}} -process { $k = [regex]::split($_,'='); if(($k[0].CompareTo("") -ne 0) -and ($k[0].StartsWith("[") -ne $True)) { $h.Add($k[0], $k[1]) } }
-    $tenantAPIKey = $h.awtenantcode
-    $organizationGroupName = $h.groupid
-    $airwatchServer = $h.host
+    $script:tenantAPIKey = $h.awtenantcode
+    $script:organizationGroupID = $h.groupid
+    $script:airwatchServer = $h.host
 }
 
 <#
@@ -225,11 +225,25 @@ Function Build-AddSupervisedTagJSON {
     Return $addTagJSON
 }
 
+Function Get-Tags {
+    $endpointURL = "https://${airwatchServer}/api/mdm/tags/search?organizationgroupid=${organizationGroupID}"
+    $webReturn = Invoke-RestMethod -Method Get -Uri $endpointURL -Headers $headers
+    $TagArray = New-Object System.Collections.Hashtable
+    foreach ($tag in $webReturn.Tags) {
+        $TagArray.Add($tag.TagName, $tag.Id.Value)
+    }
+    return $TagArray 
+}
+
+Function Select-Tag {
+
+}
+
 <# This is the actual start of the script.  All above functions are called from this point forward. #>
 #$concateUserInfo = $userName + ":" + $password
 $deviceListURI = $baseURL + $bulkDeviceEndpoint
 $restUserName = Get-BasicUserForAuth
-Load-Config
+Read-Config
 
 
 <#
@@ -239,18 +253,48 @@ Load-Config
 #>
 $useJSON = "application/json"
 $headers = Build-Headers $restUserName $tenantAPIKey $useJSON $useJSON
-$organizationGroupID = Get-OrganizationGroupID $organizationGroupName $airwatchServer $headers
-$supervisedTagIid = Get-SupervidedTagID $organizationGroupID $airwatchServer $headers
+# $organizationGroupID = Get-OrganizationGroupID $organizationGroupName $airwatchServer $headers
+# $supervisedTagIid = Get-SupervidedTagID $organizationGroupID $airwatchServer $headers
 
 <# 
-    Get the tags collection and make sure there is a "Supervised" tag.  This function needs to be updated because I found
-    an issue in the Create Tag API.
+    Get the tags, displays them to the user to select which tag to add.
 #>
-$endpointURL = $airwatchServer + "/api/mdm/tags/search?organizationgroupid=" + $organizationGroupID
-$webReturn = Invoke-RestMethod -Method Get -Uri $endpointURL -Headers $headers
+$TagList = Get-Tags
+
+
+
+$global:selection = $null
+
+Do
+{
+    $mhead
+    Write-Host # empty line
+
+    <#
+    for ($i=0; $i -lt $TagList.count; $i++)
+    {
+        Write-Host -ForegroundColor Cyan "  $($i+1)." $TagList[$i]
+    }
+    #>
+    $TagArr = @()
+    $i=0
+    foreach($tag in $TagList.keys)
+    {
+        Write-Host -ForegroundColor Cyan "  $($i+1)." $tag
+        $TagArr += $tag
+        $i++
+    }
+    Write-Host # empty line
+    $global:ans = (Read-Host 'Please enter selection') -as [int]
+
+} While ((-not $ans) -or (0 -gt $ans) -or ($TagList.Count -lt $ans))
+
+$global:selection = $ans-1
+$selectedTag = $TagArr[$global:selection]
+$TagList.$selectedTag
 
 #Build an array of all the devices that are supervised
-$endpointURL = $airwatchServer + "/api/mdm/devices/search?platform=Apple"
+$endpointURL = "https://${airwatchServer}/api/mdm/devices/search?platform=Apple"
 $webReturn = Invoke-RestMethod -Method Get -Uri $endpointURL -Headers $headers
 $supervisedDeviceIDs = New-Object System.Collections.ArrayList
 foreach ($currentDevice in $webReturn.Devices) {
@@ -258,7 +302,7 @@ foreach ($currentDevice in $webReturn.Devices) {
         $supervisedDeviceIDs.Add($currentDevice.Id.Value)
     }
 }
-
+<#
 $addTagJSON = Build-AddSupervisedTagJSON $supervisedDeviceIDs
 $endpointURL = $airwatchServer + "/api/mdm/tags/" + $supervisedTagIid + "/adddevices"
 $webReturn = Invoke-RestMethod -Method Post -Uri $endpointURL -Headers $headers -Body $addTagJSON
@@ -269,3 +313,4 @@ Write-Verbose("Total Items: " +$webReturn.TotalItems)
 Write-Verbose("Accepted Items: " + $webReturn.AcceptedItems)
 Write-Verbose("Failed Items: " + $webReturn.FailedItems)
 Write-Verbose("------------------------------")
+#>
