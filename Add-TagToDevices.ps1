@@ -71,6 +71,16 @@ Function Read-Config {
     $script:airwatchServer = $h.host
 }
 
+Function Read-Serials {
+    $data = Import-Csv -Path Serials.csv
+    $s = @()
+    foreach ($device in $data) {
+        $s += $device.SerialNumber
+        Write-Verbose $device.SerialNumber
+    }
+    return $s
+}
+
 <#
   This implementation uses Baisc authentication.  See "Client side" at https://en.wikipedia.org/wiki/Basic_access_authentication for a description
   of this implementation.
@@ -242,6 +252,7 @@ Function Select-Tag {
 <# This is the actual start of the script.  All above functions are called from this point forward. #>
 #$concateUserInfo = $userName + ":" + $password
 $deviceListURI = $baseURL + $bulkDeviceEndpoint
+$serials = Read-Serials
 $restUserName = Get-BasicUserForAuth
 Read-Config
 
@@ -269,13 +280,6 @@ Do
 {
     $mhead
     Write-Host # empty line
-
-    <#
-    for ($i=0; $i -lt $TagList.count; $i++)
-    {
-        Write-Host -ForegroundColor Cyan "  $($i+1)." $TagList[$i]
-    }
-    #>
     $TagArr = @()
     $i=0
     foreach($tag in $TagList.keys)
