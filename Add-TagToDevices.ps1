@@ -249,12 +249,25 @@ Function Select-Tag {
 
 }
 
+Function Get-DeviceIds {
+    Param([object]$serials)
+
+    $deviceids = @()
+    foreach ($serial in $serials) {
+        $endpointURL = "https://${airwatchServer}/api/mdm/devices?searchby=Serialnumber&id=${serials}"
+        $webReturn = Invoke-RestMethod -Method Get -Uri $endpointURL -Headers $headers
+        $deviceids += $webReturn.Id.Value
+    }
+    return $deviceids
+}
+
 <# This is the actual start of the script.  All above functions are called from this point forward. #>
 #$concateUserInfo = $userName + ":" + $password
-$deviceListURI = $baseURL + $bulkDeviceEndpoint
-$serials = Read-Serials
+#$deviceListURI = $baseURL + $bulkDeviceEndpoint
+$serialList = Read-Serials
 $restUserName = Get-BasicUserForAuth
 Read-Config
+
 
 
 <#
@@ -271,8 +284,6 @@ $headers = Build-Headers $restUserName $tenantAPIKey $useJSON $useJSON
     Get the tags, displays them to the user to select which tag to add.
 #>
 $TagList = Get-Tags
-
-
 
 $global:selection = $null
 
@@ -297,6 +308,9 @@ $global:selection = $ans-1
 $selectedTag = $TagArr[$global:selection]
 $TagList.$selectedTag
 
+$deviceIds = Get-DeviceIds $serialList
+Write-Host $deviceIds
+<#
 #Build an array of all the devices that are supervised
 $endpointURL = "https://${airwatchServer}/api/mdm/devices/search?platform=Apple"
 $webReturn = Invoke-RestMethod -Method Get -Uri $endpointURL -Headers $headers
@@ -306,6 +320,7 @@ foreach ($currentDevice in $webReturn.Devices) {
         $supervisedDeviceIDs.Add($currentDevice.Id.Value)
     }
 }
+#>
 <#
 $addTagJSON = Build-AddSupervisedTagJSON $supervisedDeviceIDs
 $endpointURL = $airwatchServer + "/api/mdm/tags/" + $supervisedTagIid + "/adddevices"
