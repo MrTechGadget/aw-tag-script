@@ -15,7 +15,7 @@
     A sample file has been included, just remove the name sample and add your fields, with NO quotations.
 
   .EXAMPLE
-    Add-TagToDevices.ps1 -Verbose
+    BulkTagActionsToDevices.ps1 -Verbose
   
   .PARAMETER userName
     An AirWatch account in the tenant is being queried.  This user must have the API role at a minimum. Can be basic or directory user.
@@ -128,7 +128,27 @@ Function Get-Tags {
 }
 
 Function Select-Tag {
-
+    $global:selection = $null
+    
+    Do
+    {
+        $mhead
+        Write-Host # empty line
+        $TagArr = @()
+        $i=0
+        foreach($tag in $TagList.keys)
+        {
+            Write-Host -ForegroundColor Cyan "  $($i+1)." $tag
+            $TagArr += $tag
+            $i++
+        }
+        Write-Host # empty line
+        $global:ans = (Read-Host 'Please enter selection') -as [int]
+    
+    } While ((-not $ans) -or (0 -gt $ans) -or ($TagList.Count -lt $ans))
+    
+    $global:selection = $ans-1
+    $selectedTag = $TagArr[$global:selection]
 }
 
 Function Get-DeviceIds {
@@ -153,14 +173,25 @@ Function Get-DeviceIds {
     return $deviceids
 }
 
-Function Set-DeviceTags {
-    Param([string]$selectedtag,[string]$addTagJSON)
+Function Set-Action {
+    $options = [System.Management.Automation.Host.ChoiceDescription[]] @("&Add", "&Remove")
+    [int]$defaultchoice = 0
+    $opt = $host.UI.PromptForChoice($Title , $Info , $Options,$defaultchoice)
+    switch($opt)
+    {
+    0 { return "add"}
+    1 { return "remove"}
+    }
+}
 
-    $endpointURL = "https://${airwatchServer}/api/mdm/tags/${selectedtag}/adddevices"
+Function Set-DeviceTags {
+    Param([string]$selectedtag,[string]$addTagJSON,[string]$verb)
+
+    $endpointURL = "https://${airwatchServer}/api/mdm/tags/${selectedtag}/${verb}devices"
     $webReturn = Invoke-RestMethod -Method Post -Uri $endpointURL -Headers $headers -Body $addTagJSON
     
     Write-Verbose("------------------------------")
-    Write-Verbose("Results of Add Tags Call")
+    Write-Verbose("Results of ${verb} Tags Call")
     Write-Verbose("Total Items: " +$webReturn.TotalItems)
     Write-Verbose("Accepted Items: " + $webReturn.AcceptedItems)
     Write-Verbose("Failed Items: " + $webReturn.FailedItems)
@@ -171,25 +202,16 @@ Function Set-DeviceTags {
 }
 
 <# This is the actual start of the script.  All above functions are called from this point forward. #>
-#$concateUserInfo = $userName + ":" + $password
-#$deviceListURI = $baseURL + $bulkDeviceEndpoint
+
 $serialList = Read-Serials
 $restUserName = Get-BasicUserForAuth
 Read-Config
 
-
-
-<#
-  Build the headers and send the request to the server.  The response is returned as a PSObject $webReturn, which is a collection
-  of the devices.  Parse-DeviceObject gets all of the device properties.  This example also prints out the AirWatch device ID, 
-  friendly name, and user name
-#>
+<# Build the headers and send the request to the server. #>
 $useJSON = "application/json"
 $headers = Build-Headers $restUserName $tenantAPIKey $useJSON $useJSON
 
-<# 
-    Get the tags, displays them to the user to select which tag to add.
-#>
+<# Get the tags, displays them to the user to select which tag to add. #>
 $TagList = Get-Tags
 
 $global:selection = $null
@@ -217,10 +239,11 @@ Write-Host "Selected Tag: " $selectedTag $TagList.$selectedTag
 
 $deviceIds = Get-DeviceIds $serialList
 $addTagJSON = Set-AddTagJSON $deviceIds
-$results = Set-DeviceTags $TagList.$selectedTag $addTagJSON
+$action = Set-Action
+$results = Set-DeviceTags $TagList.$selectedTag $addTagJSON $action
 
 Write-Host("------------------------------")
-Write-Host("Results of Add Tags Call")
+Write-Host("Results of ${action} Tags Call")
 Write-Host("Total Items: " +$results.TotalItems)
 Write-Host("Accepted Items: " + $results.AcceptedItems)
 Write-Host("Failed Items: " + $results.FailedItems)
