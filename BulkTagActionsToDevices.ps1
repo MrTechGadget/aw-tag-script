@@ -237,9 +237,9 @@ $global:selection = $ans-1
 $selectedTag = $TagArr[$global:selection]
 Write-Host "Selected Tag: " $selectedTag $TagList.$selectedTag
 
+$action = Set-Action
 $deviceIds = Get-DeviceIds $serialList
 $addTagJSON = Set-AddTagJSON $deviceIds
-$action = Set-Action
 $results = Set-DeviceTags $TagList.$selectedTag $addTagJSON $action
 
 Write-Host("------------------------------")
