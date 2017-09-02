@@ -92,17 +92,6 @@ Function Get-BasicUserForAuth {
     Return "Basic " + $EncodedUsernamePassword
 }
 
-Function Get-BasicUserForAuthOld {
-
-	Param([string]$func_username)
-
-	$userNameWithPassword = $func_username
-	$encoding = [System.Text.Encoding]::ASCII.GetBytes($userNameWithPassword)
-	$encodedString = [Convert]::ToBase64String($encoding)
-
-	Return "Basic " + $encodedString
-}
-
 Function Build-Headers {
 
     Param([string]$authoriztionString, [string]$tenantCode, [string]$acceptType, [string]$contentType)
@@ -202,8 +191,8 @@ Function Get-SupervisedTagJSON {
 	Return $tagJSON
 }
 
-<#  This function builds the JSON to add the supervised tag to all of the devices that are in supervised mode. #>
-Function Build-AddSupervisedTagJSON {
+<#  This function builds the JSON to add the tag to all of the devices. #>
+Function Set-AddTagJSON {
 
     Param([Array]$deviceList)
 
@@ -252,13 +241,40 @@ Function Select-Tag {
 Function Get-DeviceIds {
     Param([object]$serials)
 
+    Write-Verbose("------------------------------")
+    Write-Verbose("List of Serial Numbers")
+    #Write-Verbose $serials
+    Write-Verbose("------------------------------")
+
     $deviceids = @()
     foreach ($serial in $serials) {
         $endpointURL = "https://${airwatchServer}/api/mdm/devices?searchby=Serialnumber&id=${serials}"
         $webReturn = Invoke-RestMethod -Method Get -Uri $endpointURL -Headers $headers
         $deviceids += $webReturn.Id.Value
     }
+    Write-Verbose("------------------------------")
+    Write-Verbose("List of Device IDs")
+    #Write-Verbose $deviceIds
+    Write-Verbose("------------------------------")
+
     return $deviceids
+}
+
+Function Set-DeviceTags {
+    Param([string]$selectedtag,[string]$addTagJSON)
+
+    $endpointURL = "https://${airwatchServer}/api/mdm/tags/${selectedtag}/adddevices"
+    $webReturn = Invoke-RestMethod -Method Post -Uri $endpointURL -Headers $headers -Body $addTagJSON
+    
+    Write-Verbose("------------------------------")
+    Write-Verbose("Results of Add Tags Call")
+    Write-Verbose("Total Items: " +$webReturn.TotalItems)
+    Write-Verbose("Accepted Items: " + $webReturn.AcceptedItems)
+    Write-Verbose("Failed Items: " + $webReturn.FailedItems)
+    Write-Verbose("------------------------------")
+
+    return $webReturn
+
 }
 
 <# This is the actual start of the script.  All above functions are called from this point forward. #>
@@ -277,8 +293,6 @@ Read-Config
 #>
 $useJSON = "application/json"
 $headers = Build-Headers $restUserName $tenantAPIKey $useJSON $useJSON
-# $organizationGroupID = Get-OrganizationGroupID $organizationGroupName $airwatchServer $headers
-# $supervisedTagIid = Get-SupervidedTagID $organizationGroupID $airwatchServer $headers
 
 <# 
     Get the tags, displays them to the user to select which tag to add.
@@ -306,23 +320,20 @@ Do
 
 $global:selection = $ans-1
 $selectedTag = $TagArr[$global:selection]
-$TagList.$selectedTag
+Write-Host "Selected Tag: " $selectedTag $TagList.$selectedTag
 
 $deviceIds = Get-DeviceIds $serialList
-Write-Host $deviceIds
+$addTagJSON = Set-AddTagJSON $deviceIds
+$results = Set-DeviceTags $TagList.$selectedTag $addTagJSON
+
+Write-Host("------------------------------")
+Write-Host("Results of Add Tags Call")
+Write-Host("Total Items: " +$results.TotalItems)
+Write-Host("Accepted Items: " + $results.AcceptedItems)
+Write-Host("Failed Items: " + $results.FailedItems)
+Write-Host("------------------------------")
+
 <#
-#Build an array of all the devices that are supervised
-$endpointURL = "https://${airwatchServer}/api/mdm/devices/search?platform=Apple"
-$webReturn = Invoke-RestMethod -Method Get -Uri $endpointURL -Headers $headers
-$supervisedDeviceIDs = New-Object System.Collections.ArrayList
-foreach ($currentDevice in $webReturn.Devices) {
-	If ($currentDevice.IsSupervised -eq $True) {
-        $supervisedDeviceIDs.Add($currentDevice.Id.Value)
-    }
-}
-#>
-<#
-$addTagJSON = Build-AddSupervisedTagJSON $supervisedDeviceIDs
 $endpointURL = $airwatchServer + "/api/mdm/tags/" + $supervisedTagIid + "/adddevices"
 $webReturn = Invoke-RestMethod -Method Post -Uri $endpointURL -Headers $headers -Body $addTagJSON
 
