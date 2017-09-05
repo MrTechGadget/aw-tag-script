@@ -160,10 +160,13 @@ Function Get-DeviceIds {
     Write-Verbose("------------------------------")
 
     $deviceids = @()
+    $i = 1
     foreach ($serial in $serials) {
+        Write-Progress -Activity "Converting ${serials.Count} Serials to Device IDs" -status "Finding serial: $i" -percentComplete ($i / $serials.Count*100)
         $endpointURL = "https://${airwatchServer}/api/mdm/devices?searchby=Serialnumber&id=${serial}"
         $webReturn = Invoke-RestMethod -Method Get -Uri $endpointURL -Headers $headers
         $deviceids += $webReturn.Id.Value
+        $i++
     }
     Write-Verbose("------------------------------")
     Write-Verbose("List of Device IDs")
