@@ -161,7 +161,7 @@ Function Get-DeviceIds {
 
     $deviceids = @()
     foreach ($serial in $serials) {
-        $endpointURL = "https://${airwatchServer}/api/mdm/devices?searchby=Serialnumber&id=${serials}"
+        $endpointURL = "https://${airwatchServer}/api/mdm/devices?searchby=Serialnumber&id=${serial}"
         $webReturn = Invoke-RestMethod -Method Get -Uri $endpointURL -Headers $headers
         $deviceids += $webReturn.Id.Value
     }
