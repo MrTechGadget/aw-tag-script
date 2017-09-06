@@ -143,11 +143,16 @@ Function Set-AddTagJSON {
 
 Function Get-DeviceDetails {
     Param([string]$addTagJSON)
-    
-    $endpointURL = "https://${airwatchServer}/api/mdm/devices/id"
-    $webReturn = Invoke-RestMethod -Method Post -Uri $endpointURL -Headers $headers -Body $addTagJSON
-   
-    return $webReturn.Devices
+    try {
+        $endpointURL = "https://${airwatchServer}/api/mdm/devices/id"
+        $webReturn = Invoke-RestMethod -Method Post -Uri $endpointURL -Headers $headers -Body $addTagJSON
+       
+        return $webReturn.Devices
+    }
+    catch {
+        Write-Host "Error retrieving device details. May not be any devices with the selected tag."
+    }
+
 }
 
 <#
