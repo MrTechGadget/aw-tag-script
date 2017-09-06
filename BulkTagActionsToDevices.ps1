@@ -152,21 +152,19 @@ Function Select-Tag {
 }
 
 Function Get-DeviceIds {
-    Param([object]$serials)
+    Param([string]$addTagJSON)
 
     Write-Verbose("------------------------------")
     Write-Verbose("List of Serial Numbers")
-    #Write-Verbose $serials
+    Write-Verbose $addTagJSON
     Write-Verbose("------------------------------")
 
+    $endpointURL = "https://${airwatchServer}/api/mdm/devices?searchby=Serialnumber"
+    $webReturn = Invoke-RestMethod -Method Post -Uri $endpointURL -Headers $headers -Body $addTagJSON
+
     $deviceids = @()
-    $i = 1
-    foreach ($serial in $serials) {
-        Write-Progress -Activity "Converting ${serials.Count} Serials to Device IDs" -status "Finding serial: $i" -percentComplete ($i / $serials.Count*100)
-        $endpointURL = "https://${airwatchServer}/api/mdm/devices?searchby=Serialnumber&id=${serial}"
-        $webReturn = Invoke-RestMethod -Method Get -Uri $endpointURL -Headers $headers
-        $deviceids += $webReturn.Id.Value
-        $i++
+    foreach ($serial in $webReturn.Devices) {
+        $deviceids += $serial.Id.Value
     }
     Write-Verbose("------------------------------")
     Write-Verbose("List of Device IDs")
@@ -241,7 +239,8 @@ $selectedTag = $TagArr[$global:selection]
 Write-Host "Selected Tag: " $selectedTag $TagList.$selectedTag
 
 $action = Set-Action
-$deviceIds = Get-DeviceIds $serialList
+$SerialJSON = Set-AddTagJSON $serialList
+$deviceIds = Get-DeviceIds $SerialJSON
 $addTagJSON = Set-AddTagJSON $deviceIds
 $results = Set-DeviceTags $TagList.$selectedTag $addTagJSON $action
 
