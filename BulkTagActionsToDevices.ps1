@@ -128,7 +128,9 @@ Function Get-Tags {
 }
 
 Function Select-Tag {
-    $global:selection = $null
+    Param([object]$TagList)
+
+    $selection = $null
     
     Do
     {
@@ -143,12 +145,14 @@ Function Select-Tag {
             $i++
         }
         Write-Host # empty line
-        $global:ans = (Read-Host 'Please enter selection') -as [int]
+        $ans = (Read-Host 'Please enter selection') -as [int]
     
     } While ((-not $ans) -or (0 -gt $ans) -or ($TagList.Count -lt $ans))
     
-    $global:selection = $ans-1
-    $selectedTag = $TagArr[$global:selection]
+    $selection = $ans-1
+    $selectedTag = $TagArr[$selection]
+    [string]$TagNum = $TagList.$selectedTag
+    return $TagNum
 }
 
 Function Get-DeviceIds {
@@ -202,7 +206,9 @@ Function Set-DeviceTags {
 
 }
 
-<# This is the actual start of the script.  All above functions are called from this point forward. #>
+<# 
+Start of Script
+#>
 
 $serialList = Read-Serials
 $restUserName = Get-BasicUserForAuth
@@ -214,35 +220,15 @@ $headers = Build-Headers $restUserName $tenantAPIKey $useJSON $useJSON
 
 <# Get the tags, displays them to the user to select which tag to add. #>
 $TagList = Get-Tags
-
-$global:selection = $null
-
-Do
-{
-    $mhead
-    Write-Host # empty line
-    $TagArr = @()
-    $i=0
-    foreach($tag in $TagList.keys)
-    {
-        Write-Host -ForegroundColor Cyan "  $($i+1)." $tag
-        $TagArr += $tag
-        $i++
-    }
-    Write-Host # empty line
-    $global:ans = (Read-Host 'Please enter selection') -as [int]
-
-} While ((-not $ans) -or (0 -gt $ans) -or ($TagList.Count -lt $ans))
-
-$global:selection = $ans-1
-$selectedTag = $TagArr[$global:selection]
-Write-Host "Selected Tag: " $selectedTag $TagList.$selectedTag
+$SelectedTag = Select-Tag $TagList
+$TagName = $TagList.keys | Where-Object {$TagList["$_"] -eq [string]$SelectedTag}
+Write-Host "Selected Tag: "$TagName
 
 $action = Set-Action
 $SerialJSON = Set-AddTagJSON $serialList
 $deviceIds = Get-DeviceIds $SerialJSON
 $addTagJSON = Set-AddTagJSON $deviceIds
-$results = Set-DeviceTags $TagList.$selectedTag $addTagJSON $action
+$results = Set-DeviceTags $SelectedTag $addTagJSON $action
 
 Write-Host("------------------------------")
 Write-Host("Results of ${action} Tags Call")
