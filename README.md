@@ -10,5 +10,12 @@ These PowerShell scripts are PowerShell Core (PS 6) compliant and were written w
 They have been tested on Windows and Mac, but should also run on Linux. 
 
 Setup:
-* These scripts take a config file, which houses the API Host, API key and Organization Group ID for your AirWatch environment. A sample file has been included, just remove the name sample and add your fields, with NO quotations. 
+* These scripts take a config file, which houses the API Host, API key and Organization Group ID for your AirWatch environment. A sample file has been included, just remove the name sample and add your fields, with NO quotations. Name this file `AirWatchConfig.config`
+```
+[General]
+groupid=<number>
+awtenantcode=<api key>
+host=<api host fqdn>
+```
+
 * The `BulkTagActionsToDevices` script takes an input of serial numbers from a `Serials.csv` file. Sample Included. 
