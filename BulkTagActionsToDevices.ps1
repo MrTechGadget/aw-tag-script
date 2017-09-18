@@ -14,45 +14,73 @@
     It also takes a config file, which houses the API Host, API key and Organization Group ID for your AirWatch environment. 
     A sample file has been included, just remove the name sample and add your fields, with NO quotations.
 
+    Information you will need to use this script:
+    userName - An AirWatch account in the tenant is being queried.  This user must have the API role at a minimum. Can be basic or directory user.
+    password - The password that is used by the user specified in the username parameter
+    tenantAPIKey - This is the REST API key that is generated in the AirWatch Console.  You locate this key at All Settings -> Advanced -> API -> REST, and you will find the key in the API Key field.  If it is not there you may need override the settings and Enable API Access
+    airwatchServer - This will be the fully qualified domain name of your AirWatch API server, without the https://.  All of the REST endpoints start with a forward slash (/) so do not include that either.
+    organizationGroupId - This will be the organization group Id in the AirWatch console. Not the group name, but the ID.
+
+  .INPUTS
+    AirWatchConfig.json
+    Serials.csv
+
   .EXAMPLE
     BulkTagActionsToDevices.ps1 -Verbose
-  
-  .PARAMETER userName
-    An AirWatch account in the tenant is being queried.  This user must have the API role at a minimum. Can be basic or directory user.
 
-  .PARAMETER password
-    The password that is used by the user specified in the username parameter
-
-  .PARAMETER tenantAPIKey
-    This is the REST API key that is generated in the AirWatch Console.  You locate this key at All Settings -> Advanced -> API -> REST,
-    and you will find the key in the API Key field.  If it is not there you may need override the settings and Enable API Access
-
-  .PARAMETER airwatchServer
-    This will be the https://<your_AirWatch_Server>.  All of the REST endpoints start with a forward slash (/) so do not include that with
-    the server name
-
-  .PARAMETER organizationGroupId
-    This will be the organization group Id in the AirWatch console.
+  .NOTES
+    Version:        1.2
+    Author:         Joshua Clark @audioeng
+    Creation Date:  09/06/2017
+    Site:           https://github.com/audioeng/aw-tag-script
     
 #>
 
 Function Read-Config {
-    #from http://tlingenf.spaces.live.com/blog/cns!B1B09F516B5BAEBF!213.entry
-    #
-    Get-Content "AirWatchConfig.Config" | foreach-object -begin {$h=@{}} -process { $k = [regex]::split($_,'='); if(($k[0].CompareTo("") -ne 0) -and ($k[0].StartsWith("[") -ne $True)) { $h.Add($k[0], $k[1]) } }
-    $script:tenantAPIKey = $h.awtenantcode
-    $script:organizationGroupID = $h.groupid
-    $script:airwatchServer = $h.host
+    try {
+        if (Test-Path "AirWatchConfig.json") {
+            $h = (Get-Content "AirWatchConfig.json") -join "`n" | ConvertFrom-Json
+            Write-Verbose "Config file loaded."
+        } else {
+            Write-Verbose "No config file exists, please complete the sample config and name the file AirWatchConfig.json "
+            Write-Host "-----------------------------------------------------------------------------------------------" -ForegroundColor Black -BackgroundColor Red
+            Write-Host "No config file exists, please complete the sample config and name the file AirWatchConfig.json " -ForegroundColor Black -BackgroundColor Red
+            Write-Host "-----------------------------------------------------------------------------------------------" -ForegroundColor Black -BackgroundColor Red
+        }
+        if ($h.groupid -and $h.awtenantcode -and $h.host) {
+            Write-Verbose "Config file formatted correctly."
+            return $h
+        } else {
+            Write-Verbose "ConfigFile not correct, please complete the sample config and name the file AirWatchConfig.json"
+            Write-Host "-----------------------------------------------------------------------------------------------" -ForegroundColor Black -BackgroundColor Red
+            Write-Host "ConfigFile not correct, please complete the sample config and name the file AirWatchConfig.json" -ForegroundColor Black -BackgroundColor Red
+            Write-Host "-----------------------------------------------------------------------------------------------" -ForegroundColor Black -BackgroundColor Red
+        }
+    }
+    catch {
+        Write-Verbose "No config file exists, please complete the sample config and name the file AirWatchConfig.json"
+        Write-Host "No config file exists, please complete the sample config and name the file AirWatchConfig.json"
+    }
 }
+
 <# Reads Serial Numbers from Serials.csv file and outputs array of serial numbers. #>
 Function Read-Serials {
-    $data = Import-Csv -Path Serials.csv
-    $s = @()
-    foreach ($device in $data) {
-        $s += $device.SerialNumber
-        Write-Verbose $device.SerialNumber
+    if (Test-Path "Serials.csv") {
+        Write-Verbose "Serials.csv exists, importing list."
+        $data = Import-Csv -Path Serials.csv
+        $s = @()
+        foreach ($device in $data) {
+            $s += $device.SerialNumber
+            Write-Verbose $device.SerialNumber
+        }
+        return $s
+    } else {
+        Write-Verbose "Serials.csv does not exist."
+        Write-Host "--------------------------------------------------------------------------------------" -ForegroundColor Black -BackgroundColor Red
+        Write-Host "      No Serials.csv file exists, please place file in same directory as script.      " -ForegroundColor Black -BackgroundColor Red
+        Write-Host "--------------------------------------------------------------------------------------" -ForegroundColor Black -BackgroundColor Red
     }
-    return $s
+    
 }
 
 <#  This implementation uses Basic authentication. #>
@@ -212,7 +240,11 @@ Start of Script
 
 $serialList = Read-Serials
 $restUserName = Get-BasicUserForAuth
-Read-Config
+$Config = Read-Config
+$tenantAPIKey = $Config.awtenantcode
+$organizationGroupID = $Config.groupid
+$airwatchServer = $Config.host
+
 
 <# Build the headers and send the request to the server. #>
 $useJSON = "application/json"

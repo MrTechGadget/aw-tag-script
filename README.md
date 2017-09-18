@@ -11,12 +11,14 @@ They have been tested on Windows and Mac, but should also run on Linux.
 
 Setup:
 I am assuming you have a working way to run PowerShell scripts. If you need to set up your environment, check out this [Getting Started post by Ashley McGlone](https://blogs.msdn.microsoft.com/powershell/2017/06/09/getting-started-with-powershell-core-on-windows-mac-and-linux/)
-* These scripts take a config file, which houses the API Host, API key and Organization Group ID for your AirWatch environment. A sample file has been included, just remove the name sample and add your fields, with NO quotations. Name this file `AirWatchConfig.config`
-```
-[General]
-groupid=<number>
-awtenantcode=<api key>
-host=<api host fqdn>
+
+* These scripts take a config file, which houses the API Host, API key and Organization Group ID for your AirWatch environment. A sample file has been included, just remove the name sample and replace with your values. Name this file `AirWatchConfig.json`. Git will ignore this file.
+```json
+{
+    "groupid" : 1234,
+    "awtenantcode" : "apikey",
+    "host" : "host.domain.tld"
+}
 ```
 
 * The `BulkTagActionsToDevices` script takes an input of serial numbers from a `Serials.csv` file. Sample Included. 
