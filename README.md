@@ -22,3 +22,7 @@ I am assuming you have a working way to run PowerShell scripts. If you need to s
 ```
 
 * The `BulkTagActionsToDevices` script takes an input of serial numbers from a `Serials.csv` file. Sample Included. 
+
+## Author
+
+* **Joshua Clark** - [MrTechGadget Github](https://github.com/MrTechGadget) [MrTechGadget Website](http://mrtechgadget.com/)
