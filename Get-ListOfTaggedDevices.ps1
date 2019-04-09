@@ -3,6 +3,13 @@
   Creates List of Devices that have a particular tag in AirWatch
 .DESCRIPTION
   This script displays all tags in the Organization group, allowing the user to select a tag. All of the devices with that tag are exported to a CSV file named for that tag.
+  
+    This PowerShell script is PowerShell Core compliant and was written with Visual Studio Code on a Mac. It has been tested on Windows and Mac, but should also run on Linux.
+    Setup: 
+    This script takes an input of serial numbers from a CSV file. Sample Included. 
+    It also takes a config file, which houses the API Host, API key and Organization Group ID for your AirWatch environment. 
+    A sample file has been included, if you don't have one the script prompt fpr the values and will create it.
+
 .PARAMETER <Parameter_Name>
 
     Information you will need to use this script:
@@ -17,10 +24,11 @@
 .OUTPUTS
   Outputs a CSV file with Devices that have the selected tag.
 .NOTES
-  Version:        1.2
-  Author:         Joshua Clark @audioeng
+  Version:        1.3
+  Author:         Joshua Clark @MrTechGadget
   Creation Date:  09/06/2017
-  Site:           https://github.com/audioeng/aw-tag-script
+  Update Date:    04/09/2019
+  Site:           https://github.com/MrTechGadget/aw-tag-script
   
 .EXAMPLE
   Get-ListOfTaggedDevices.ps1
@@ -31,28 +39,49 @@
 Function Read-Config {
     try {
         if (Test-Path "AirWatchConfig.json") {
-            $h = (Get-Content "AirWatchConfig.json") -join "`n" | ConvertFrom-Json
+            $Config = (Get-Content "AirWatchConfig.json") -join "`n" | ConvertFrom-Json
             Write-Verbose "Config file loaded."
+            if ($Config.groupid -and $Config.awtenantcode -and $Config.host) {
+                Write-Verbose "Config file formatted correctly."
+                return $Config
+            } else {
+                Write-Verbose "ConfigFile not correct, please complete the sample config and name the file AirWatchConfig.json"
+                Write-Host "-----------------------------------------------------------------------------------------------" -ForegroundColor Black -BackgroundColor Red
+                Write-Host "ConfigFile not correct, please complete the sample config and name the file AirWatchConfig.json" -ForegroundColor Black -BackgroundColor Red
+                Write-Host "-----------------------------------------------------------------------------------------------" -ForegroundColor Black -BackgroundColor Red
+                $Config
+                Set-Config
+            }
         } else {
             Write-Verbose "No config file exists, please complete the sample config and name the file AirWatchConfig.json "
             Write-Host "-----------------------------------------------------------------------------------------------" -ForegroundColor Black -BackgroundColor Red
             Write-Host "No config file exists, please complete the sample config and name the file AirWatchConfig.json " -ForegroundColor Black -BackgroundColor Red
             Write-Host "-----------------------------------------------------------------------------------------------" -ForegroundColor Black -BackgroundColor Red
+            Set-Config
         }
-        if ($h.groupid -and $h.awtenantcode -and $h.host) {
-            Write-Verbose "Config file formatted correctly."
-            return $h
-        } else {
-            Write-Verbose "ConfigFile not correct, please complete the sample config and name the file AirWatchConfig.json"
-            Write-Host "-----------------------------------------------------------------------------------------------" -ForegroundColor Black -BackgroundColor Red
-            Write-Host "ConfigFile not correct, please complete the sample config and name the file AirWatchConfig.json" -ForegroundColor Black -BackgroundColor Red
-            Write-Host "-----------------------------------------------------------------------------------------------" -ForegroundColor Black -BackgroundColor Red
-        }
+        
     }
     catch {
         Write-Verbose "No config file exists, please complete the sample config and name the file AirWatchConfig.json"
         Write-Host "No config file exists, please complete the sample config and name the file AirWatchConfig.json"
+        Set-Config
     }
+}
+
+Function Set-Config {
+    $host = Read-Host "Enter FQDN of API server, do not include protocol or path"
+    $awtenantcode = Read-Host "Enter API Key"
+    $groupid = Read-Host "Enter Group ID (numerical value)"
+    $configuration = @{}
+    $configuration.Add("groupid", $groupid)
+    $configuration.Add("awtenantcode", $awtenantcode)
+    $configuration.Add("host", $host)
+    ConvertTo-Json -InputObject $configuration > ./AirWatchConfig.json
+    do {
+        Start-Sleep -s 1
+    } until (Test-Path "AirWatchConfig.json")
+    Start-Sleep -s 3
+    Read-Config
 }
 
 <#  This implementation uses Basic authentication. #>
@@ -63,7 +92,7 @@ Function Get-BasicUserForAuth {
     Return "Basic " + $EncodedUsernamePassword
 }
 
-Function Build-Headers {
+Function Set-Headers {
 
     Param([string]$authoriztionString, [string]$tenantCode, [string]$acceptType, [string]$contentType)
 
@@ -194,7 +223,7 @@ $airwatchServer = $Config.host
 
 <# Build the headers and send the request to the server. #>
 $useJSON = "application/json"
-$headers = Build-Headers $restUserName $tenantAPIKey $useJSON $useJSON
+$headers = Set-Headers $restUserName $tenantAPIKey $useJSON $useJSON
 
 $TagList = Get-Tags
 $SelectedTag = Select-Tag $TagList
